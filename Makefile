@@ -7,7 +7,7 @@ docker-build:
 	docker build -t $(IMAGE_NAME) .
 
 build:
-	docker run --rm -v $(SRC_DIR):/gateos $(IMAGE_NAME) make _build
+	docker run --rm -v $(SRC_DIR):/gateos:z $(IMAGE_NAME) make _build
 
 _build:
 	nasm -f elf32 boot/boot.asm -o boot/boot.o
