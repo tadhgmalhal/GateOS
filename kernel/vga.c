@@ -26,3 +26,9 @@ void vga_print(const char *str, int col, int row)
         i++;
     }
 }
+
+void vga_putchar(char c, int col, int row)
+{
+    int index = row * VGA_WIDTH + col;
+    vga[index] = (uint16_t)(c) | (uint16_t)(WHITE_ON_BLACK << 8);
+}

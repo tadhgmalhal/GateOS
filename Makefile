@@ -27,6 +27,10 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/cpu/irq.c -o kernel/cpu/irq.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/drivers/timer.c -o kernel/drivers/timer.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/drivers/keyboard.c -o kernel/drivers/keyboard.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
 	i686-elf-gcc -T linker.ld -o gateos.bin \
 		-ffreestanding -O2 -nostdlib \
@@ -36,6 +40,8 @@ _build:
 		kernel/cpu/isr.o \
 		kernel/cpu/pic.o \
 		kernel/cpu/irq_asm.o kernel/cpu/irq.o \
+		kernel/drivers/timer.o \
+		kernel/drivers/keyboard.o \
 		kernel/vga.o \
 		kernel/kernel.o \
 		-lgcc
