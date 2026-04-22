@@ -7,15 +7,44 @@ docker-build:
 	docker build -t $(IMAGE_NAME) .
 
 build:
-	docker run --rm -v $(SRC_DIR):/gateos $(IMAGE_NAME) make _build
+	docker run --rm -v $(SRC_DIR):/gateos:z $(IMAGE_NAME) make _build
 
 _build:
 	nasm -f elf32 boot/boot.asm -o boot/boot.o
+	nasm -f elf32 kernel/cpu/gdt.asm -o kernel/cpu/gdt_asm.o
+	nasm -f elf32 kernel/cpu/idt.asm -o kernel/cpu/idt_asm.o
+	nasm -f elf32 kernel/cpu/irq.asm -o kernel/cpu/irq_asm.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
-		-c kernel/kernel.c -o kernel/kernel.o
+		-Ikernel -c kernel/kernel.c -o kernel/kernel.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/cpu/gdt.c -o kernel/cpu/gdt.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/cpu/idt.c -o kernel/cpu/idt.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/cpu/isr.c -o kernel/cpu/isr.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/cpu/pic.c -o kernel/cpu/pic.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/cpu/irq.c -o kernel/cpu/irq.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/drivers/timer.c -o kernel/drivers/timer.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/drivers/keyboard.c -o kernel/drivers/keyboard.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/vga.c -o kernel/vga.o
 	i686-elf-gcc -T linker.ld -o gateos.bin \
 		-ffreestanding -O2 -nostdlib \
-		boot/boot.o kernel/kernel.o -lgcc
+		boot/boot.o \
+		kernel/cpu/gdt_asm.o kernel/cpu/gdt.o \
+		kernel/cpu/idt_asm.o kernel/cpu/idt.o \
+		kernel/cpu/isr.o \
+		kernel/cpu/pic.o \
+		kernel/cpu/irq_asm.o kernel/cpu/irq.o \
+		kernel/drivers/timer.o \
+		kernel/drivers/keyboard.o \
+		kernel/vga.o \
+		kernel/kernel.o \
+		-lgcc
 	mkdir -p iso/boot/grub
 	cp gateos.bin iso/boot/
 	cp grub.cfg iso/boot/grub/
@@ -27,3 +56,4 @@ run:
 clean:
 	rm -f boot/boot.o kernel/kernel.o gateos.bin gateos.iso
 	rm -rf iso/boot
+	find kernel -name "*.o" -delete
