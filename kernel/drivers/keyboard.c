@@ -77,6 +77,8 @@ static void keyboard_callback(registers_t *regs)
                 vga_print("> ", 0, cursor_row);
             }
         }
+
+        vga_set_cursor(cursor_col, cursor_row);
     }
 }
 

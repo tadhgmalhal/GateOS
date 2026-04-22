@@ -16,7 +16,9 @@ void kernel_main()
     keyboard_init();
 
     vga_clear();
-    vga_print("GateOS v0.1", 0, 0);
+    vga_enable_cursor();
+
+    vga_print_color("GateOS v0.1", 0, 0, VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLACK));
 
     kprintf("GDT initialized.\n");
     kprintf("IDT initialized.\n");
@@ -26,6 +28,7 @@ void kernel_main()
     kprintf("kprintf working. Hex test: %x\n", 0xDEADBEEF);
 
     vga_print("> ", 0, 23);
+    vga_set_cursor(2, 23);
 
     while (1)
     {
