@@ -31,6 +31,8 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/drivers/keyboard.c -o kernel/drivers/keyboard.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/lib/kprintf.c -o kernel/lib/kprintf.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
 	i686-elf-gcc -T linker.ld -o gateos.bin \
 		-ffreestanding -O2 -nostdlib \
@@ -42,6 +44,7 @@ _build:
 		kernel/cpu/irq_asm.o kernel/cpu/irq.o \
 		kernel/drivers/timer.o \
 		kernel/drivers/keyboard.o \
+		kernel/lib/kprintf.o \
 		kernel/vga.o \
 		kernel/kernel.o \
 		-lgcc

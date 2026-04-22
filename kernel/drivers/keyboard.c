@@ -2,8 +2,8 @@
 #include "../cpu/irq.h"
 #include "../vga.h"
 
-static int cursor_col = 0;
-static int cursor_row = 6;
+static int cursor_col = 2;
+static int cursor_row = 23;
 
 static inline uint8_t inb(uint16_t port)
 {
@@ -27,7 +27,6 @@ static void keyboard_callback(registers_t *regs)
 
     uint8_t scancode = inb(0x60);
 
-    // ignore key release events (bit 7 set)
     if (scancode & 0x80)
     {
         return;
@@ -41,10 +40,19 @@ static void keyboard_callback(registers_t *regs)
         {
             cursor_row++;
             cursor_col = 0;
+
+            if (cursor_row >= 25)
+            {
+                vga_scroll();
+                cursor_row = 24;
+            }
+
+            vga_print("> ", 0, cursor_row);
+            cursor_col = 2;
         }
         else if (c == '\b')
         {
-            if (cursor_col > 0)
+            if (cursor_col > 2)
             {
                 cursor_col--;
                 vga_putchar(' ', cursor_col, cursor_row);
@@ -54,6 +62,20 @@ static void keyboard_callback(registers_t *regs)
         {
             vga_putchar(c, cursor_col, cursor_row);
             cursor_col++;
+
+            if (cursor_col >= 80)
+            {
+                cursor_col = 2;
+                cursor_row++;
+
+                if (cursor_row >= 25)
+                {
+                    vga_scroll();
+                    cursor_row = 24;
+                }
+
+                vga_print("> ", 0, cursor_row);
+            }
         }
     }
 }

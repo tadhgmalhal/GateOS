@@ -32,3 +32,20 @@ void vga_putchar(char c, int col, int row)
     int index = row * VGA_WIDTH + col;
     vga[index] = (uint16_t)(c) | (uint16_t)(WHITE_ON_BLACK << 8);
 }
+
+
+void vga_scroll()
+{
+    for (int row = 1; row < VGA_HEIGHT; row++)
+    {
+        for (int col = 0; col < VGA_WIDTH; col++)
+        {
+            vga[(row - 1) * VGA_WIDTH + col] = vga[row * VGA_WIDTH + col];
+        }
+    }
+
+    for (int col = 0; col < VGA_WIDTH; col++)
+    {
+        vga[(VGA_HEIGHT - 1) * VGA_WIDTH + col] = (uint16_t)(' ') | (uint16_t)(WHITE_ON_BLACK << 8);
+    }
+}
