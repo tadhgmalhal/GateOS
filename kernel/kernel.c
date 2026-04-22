@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "cpu/gdt.h"
 
 #define VGA_ADDRESS 0xB8000
 #define VGA_WIDTH   80
@@ -28,8 +29,10 @@ static void vga_print(const char *str, int col, int row)
 
 void kernel_main()
 {
+    gdt_init();
+
     vga_clear();
-    vga_print("GateOS v0.1 - Booting...", 0, 0);
+    vga_print("GateOS v0.1", 0, 0);
     vga_print("Kernel loaded successfully.", 0, 1);
 
     while (1)
