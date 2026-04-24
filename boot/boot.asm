@@ -20,6 +20,7 @@ global _start
 
 _start:
     mov esp, stack_top  ; set up the stack
+    push ebx
     extern kernel_main
     call kernel_main    ; jump into C
     cli                 ; disable interrupts if kernel_main returns
