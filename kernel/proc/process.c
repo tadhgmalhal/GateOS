@@ -22,6 +22,7 @@ process_t *process_create(const char *name, uint32_t priority)
     proc->state    = PROCESS_READY;
     proc->priority = priority;
     proc->ticks    = 0;
+    proc->sleep_until = 0;
     proc->next     = 0;
     proc->parent   = current_process;
     proc->esp      = 0;

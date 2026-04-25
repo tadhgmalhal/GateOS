@@ -3,6 +3,7 @@
 #include "../cpu/irq.h"
 #include "../cpu/gdt.h"
 #include "../lib/kprintf.h"
+#include "../drivers/timer.h"
 
 #define SCHEDULER_TICKS 10
 
@@ -69,6 +70,14 @@ uint32_t scheduler_do_switch(uint32_t current_esp)
     return next_proc->esp;
 }
 
+void process_sleep(uint32_t ticks)
+{
+    process_t *current = process_get_current();
+    current->sleep_until = timer_get_ticks() + ticks;
+    current->state = PROCESS_BLOCKED;
+    schedule();
+}
+
 void scheduler_tick(registers_t *regs)
 {
     (void)regs;
@@ -80,9 +89,26 @@ void scheduler_tick(registers_t *regs)
         return;
     }
 
+    // wake any sleeping processes whose timer has expired
+    process_t *proc = process_get_list();
+    while (proc)
+    {
+        if (proc->state == PROCESS_BLOCKED && proc->sleep_until > 0)
+        {
+            if (timer_get_ticks() >= proc->sleep_until)
+            {
+                proc->state       = PROCESS_READY;
+                proc->sleep_until = 0;
+            }
+        }
+        proc = proc->next;
+    }
+
     current->ticks++;
 
-    if (current->ticks >= SCHEDULER_TICKS)
+    uint32_t slice = SCHEDULER_TICKS * (current->priority > 0 ? current->priority : 1);
+
+    if (current->ticks >= slice)
     {
         current->ticks = 0;
         schedule();

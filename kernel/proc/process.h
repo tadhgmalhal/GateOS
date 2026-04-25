@@ -26,6 +26,7 @@ typedef struct process
     uint32_t         kernel_stack_top;
     uint32_t         priority;
     uint32_t         ticks;
+    uint32_t         sleep_until;
     struct process  *next;
     struct process  *parent;
 } process_t;
