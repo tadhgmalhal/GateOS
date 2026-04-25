@@ -37,6 +37,8 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/mm/pmm.c -o kernel/mm/pmm.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/mm/vmm.c -o kernel/mm/vmm.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
 	i686-elf-gcc -T linker.ld -o gateos.bin \
 		-ffreestanding -O2 -nostdlib \
@@ -51,6 +53,7 @@ _build:
 		kernel/lib/kprintf.o \
 		kernel/lib/string.o \
 		kernel/mm/pmm.o \
+		kernel/mm/vmm.o \
 		kernel/vga.o \
 		kernel/kernel.o \
 		-lgcc

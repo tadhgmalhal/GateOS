@@ -7,6 +7,7 @@
 #include "lib/kprintf.h"
 #include "lib/string.h"
 #include "mm/pmm.h"
+#include "mm/vmm.h"
 #include "boot/multiboot.h"
 #include "vga.h"
 
@@ -29,6 +30,7 @@ void kernel_main(multiboot_info_t *mboot)
     kprintf("Keyboard active.\n");
 
     pmm_init(mboot);
+    vmm_init();
 
     vga_print("> ", 0, 23);
     vga_set_cursor(2, 23);
