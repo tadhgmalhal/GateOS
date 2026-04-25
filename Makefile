@@ -41,6 +41,8 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/mm/kheap.c -o kernel/mm/kheap.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/proc/process.c -o kernel/proc/process.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
 	i686-elf-gcc -T linker.ld -o gateos.bin \
 		-ffreestanding -O2 -nostdlib \
@@ -57,6 +59,7 @@ _build:
 		kernel/mm/pmm.o \
 		kernel/mm/vmm.o \
 		kernel/mm/kheap.o \
+		kernel/proc/process.o \
 		kernel/vga.o \
 		kernel/kernel.o \
 		-lgcc

@@ -9,6 +9,7 @@
 #include "mm/pmm.h"
 #include "mm/vmm.h"
 #include "mm/kheap.h"
+#include "proc/process.h"
 #include "boot/multiboot.h"
 #include "vga.h"
 
@@ -33,6 +34,10 @@ void kernel_main(multiboot_info_t *mboot)
     pmm_init(mboot);
     vmm_init();
     heap_init();
+    process_init();
+
+    vga_print("> ", 0, 23);
+    vga_set_cursor(2, 23);
 
     while (1)
     {
