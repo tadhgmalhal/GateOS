@@ -5,9 +5,16 @@
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
 #include "lib/kprintf.h"
+#include "lib/string.h"
+#include "mm/pmm.h"
+#include "mm/vmm.h"
+#include "mm/kheap.h"
+#include "proc/process.h"
+#include "proc/scheduler.h"
+#include "boot/multiboot.h"
 #include "vga.h"
 
-void kernel_main()
+void kernel_main(multiboot_info_t *mboot)
 {
     gdt_init();
     idt_init();
@@ -17,7 +24,6 @@ void kernel_main()
 
     vga_clear();
     vga_enable_cursor();
-
     vga_print_color("GateOS v0.1", 0, 0, VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLACK));
 
     kprintf("GDT initialized.\n");
@@ -25,7 +31,12 @@ void kernel_main()
     kprintf("IRQs enabled.\n");
     kprintf("Timer running at %d Hz.\n", 100);
     kprintf("Keyboard active.\n");
-    kprintf("kprintf working. Hex test: %x\n", 0xDEADBEEF);
+
+    pmm_init(mboot);
+    vmm_init();
+    heap_init();
+    process_init();
+    scheduler_init();
 
     vga_print("> ", 0, 23);
     vga_set_cursor(2, 23);

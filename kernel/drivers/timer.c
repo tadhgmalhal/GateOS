@@ -1,6 +1,6 @@
 #include "timer.h"
 #include "../cpu/irq.h"
-#include "../vga.h"
+#include "../lib/kprintf.h"
 
 static uint32_t tick = 0;
 
@@ -9,10 +9,12 @@ static inline void outb(uint16_t port, uint8_t value)
     __asm__ volatile("outb %1, %0" : : "dN"(port), "a"(value));
 }
 
+void scheduler_tick(registers_t *regs);
+
 static void timer_callback(registers_t *regs)
 {
-    (void)regs;
     tick++;
+    scheduler_tick(regs);
 }
 
 void timer_init(uint32_t frequency)
