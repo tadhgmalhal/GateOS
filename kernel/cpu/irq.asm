@@ -1,4 +1,5 @@
 extern irq_handler
+extern scheduler_do_switch
 
 %macro IRQ 2
 global irq%1
@@ -37,10 +38,18 @@ irq_common_stub:
     mov fs, ax
     mov gs, ax
 
-    push esp
+    push esp            ; push current esp as argument
     call irq_handler
     add esp, 4
 
+    push esp            ; push current esp for scheduler
+    call scheduler_do_switch
+    add esp, 4
+    test eax, eax
+    jz .no_switch
+    mov esp, eax        ; switch to new stack
+
+.no_switch:
     pop eax
     mov ds, ax
     mov es, ax

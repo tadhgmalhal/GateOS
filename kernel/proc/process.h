@@ -15,20 +15,12 @@ typedef enum
     PROCESS_ZOMBIE
 } process_state_t;
 
-typedef struct
-{
-    uint32_t eax, ebx, ecx, edx;
-    uint32_t esi, edi, ebp, esp;
-    uint32_t eip, eflags;
-    uint32_t cs, ds, ss;
-} cpu_state_t;
-
 typedef struct process
 {
     uint32_t         pid;
     char             name[PROCESS_NAME_MAX];
     process_state_t  state;
-    cpu_state_t      cpu_state;
+    uint32_t         esp;
     page_dir_t      *page_dir;
     uint32_t         kernel_stack;
     uint32_t         kernel_stack_top;
@@ -37,5 +29,12 @@ typedef struct process
     struct process  *next;
     struct process  *parent;
 } process_t;
+
+process_t  *process_create(const char *name, uint32_t priority);
+void        process_destroy(process_t *proc);
+process_t  *process_get_current();
+process_t  *process_get_list();
+void        process_set_current(process_t *proc);
+void        process_init();
 
 #endif

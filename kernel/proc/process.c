@@ -5,9 +5,9 @@
 #include "../lib/string.h"
 #include "../lib/kprintf.h"
 
-static process_t *process_list = 0;
+static process_t *process_list    = 0;
 static process_t *current_process = 0;
-static uint32_t   next_pid = 0;
+static uint32_t   next_pid        = 0;
 
 process_t *process_create(const char *name, uint32_t priority)
 {
@@ -24,6 +24,7 @@ process_t *process_create(const char *name, uint32_t priority)
     proc->ticks    = 0;
     proc->next     = 0;
     proc->parent   = current_process;
+    proc->esp      = 0;
 
     strncpy(proc->name, name, PROCESS_NAME_MAX - 1);
     proc->name[PROCESS_NAME_MAX - 1] = '\0';
@@ -36,8 +37,7 @@ process_t *process_create(const char *name, uint32_t priority)
 
     proc->kernel_stack     = (uint32_t)stack;
     proc->kernel_stack_top = (uint32_t)(stack + KERNEL_STACK_SIZE);
-
-    proc->page_dir = vmm_get_kernel_dir();
+    proc->page_dir         = vmm_get_kernel_dir();
 
     if (!process_list)
     {
@@ -79,7 +79,7 @@ void process_set_current(process_t *proc)
 void process_init()
 {
     process_t *idle = process_create("idle", 0);
-    idle->state = PROCESS_RUNNING;
+    idle->state     = PROCESS_RUNNING;
     current_process = idle;
     kprintf("Process manager initialized.\n");
     kprintf("  Idle process created (PID 0).\n");

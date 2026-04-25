@@ -14,6 +14,7 @@ _build:
 	nasm -f elf32 kernel/cpu/gdt.asm -o kernel/cpu/gdt_asm.o
 	nasm -f elf32 kernel/cpu/idt.asm -o kernel/cpu/idt_asm.o
 	nasm -f elf32 kernel/cpu/irq.asm -o kernel/cpu/irq_asm.o
+	nasm -f elf32 kernel/proc/context_switch.asm -o kernel/proc/context_switch.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/kernel.c -o kernel/kernel.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
@@ -43,6 +44,8 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/proc/process.c -o kernel/proc/process.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/proc/scheduler.c -o kernel/proc/scheduler.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
 	i686-elf-gcc -T linker.ld -o gateos.bin \
 		-ffreestanding -O2 -nostdlib \
@@ -60,6 +63,8 @@ _build:
 		kernel/mm/vmm.o \
 		kernel/mm/kheap.o \
 		kernel/proc/process.o \
+		kernel/proc/context_switch.o \
+		kernel/proc/scheduler.o \
 		kernel/vga.o \
 		kernel/kernel.o \
 		-lgcc
