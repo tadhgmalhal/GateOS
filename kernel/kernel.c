@@ -35,6 +35,59 @@ void kernel_main(multiboot_info_t *mboot)
     pmm_init(mboot);
     vmm_init();
     heap_init();
+
+    // VMM user dir test
+    kprintf("Testing vmm_create_user_dir...\n");
+
+    page_dir_t *test_dir = vmm_create_user_dir();
+
+    if (test_dir == 0)
+    {
+        PANIC("vmm_create_user_dir returned null");
+    }
+
+    // verify kernel upper half is copied
+    uint32_t kernel_start = PAGE_DIR_INDEX(KERNEL_VIRTUAL_BASE);
+    int upper_half_ok = 1;
+
+    for (uint32_t i = kernel_start; i < 1024; i++)
+    {
+        if (test_dir->entries[i] != vmm_get_kernel_dir()->entries[i])
+        {
+            upper_half_ok = 0;
+            break;
+        }
+    }
+
+    if (!upper_half_ok)
+    {
+        PANIC("vmm_create_user_dir: upper half mismatch");
+    }
+
+    // verify lower half is empty
+    int lower_half_ok = 1;
+    for (uint32_t i = 0; i < kernel_start; i++)
+    {
+        if (test_dir->entries[i] != 0)
+        {
+            lower_half_ok = 0;
+            break;
+        }
+    }
+
+    if (!lower_half_ok)
+    {
+        PANIC("vmm_create_user_dir: lower half not zeroed");
+    }
+
+    // test destroy
+    vmm_destroy_user_dir(test_dir);
+
+    kprintf("  vmm_create_user_dir: PASS\n");
+    kprintf("  vmm_destroy_user_dir: PASS\n");
+    kprintf("  Upper half mapping: PASS\n");
+    kprintf("  Lower half zeroed: PASS\n");
+
     process_init();
     scheduler_init();
 

@@ -55,13 +55,40 @@ page_dir_t *vmm_get_kernel_dir()
     return kernel_dir;
 }
 
+page_dir_t *vmm_create_user_dir()
+{
+    page_dir_t *dir = (page_dir_t *)pmm_alloc_frame();
+    memset(dir, 0, sizeof(page_dir_t));
+
+    uint32_t kernel_start_index = PAGE_DIR_INDEX(KERNEL_VIRTUAL_BASE);
+    for (uint32_t i = kernel_start_index; i < 1024; i++)
+    {
+        dir->entries[i] = kernel_dir->entries[i];
+    }
+
+    return dir;
+}
+
+void vmm_destroy_user_dir(page_dir_t *dir)
+{
+    uint32_t kernel_start_index = PAGE_DIR_INDEX(KERNEL_VIRTUAL_BASE);
+
+    for (uint32_t i = 0; i < kernel_start_index; i++)
+    {
+        if (dir->entries[i] & PAGE_PRESENT)
+        {
+            pmm_free_frame(PAGE_FRAME_ADDR(dir->entries[i]));
+        }
+    }
+
+    pmm_free_frame((uint32_t)dir);
+}
+
 void vmm_init()
 {
     kernel_dir = (page_dir_t *)pmm_alloc_frame();
     memset(kernel_dir, 0, sizeof(page_dir_t));
 
-    // identity map the first 8MB
-    // this covers the kernel code, stack, and PMM bitmap
     for (uint32_t addr = 0; addr < 0x800000; addr += PAGE_SIZE)
     {
         vmm_map(kernel_dir, addr, addr, PAGE_PRESENT | PAGE_WRITABLE);
@@ -69,7 +96,6 @@ void vmm_init()
 
     vmm_switch_dir(kernel_dir);
 
-    // enable paging by setting bit 31 of CR0
     uint32_t cr0;
     __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
     cr0 |= 0x80000000;
