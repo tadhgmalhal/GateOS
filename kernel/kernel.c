@@ -13,6 +13,7 @@
 #include "proc/scheduler.h"
 #include "boot/multiboot.h"
 #include "vga.h"
+#include "proc/userspace.h"
 
 void kernel_main(multiboot_info_t *mboot)
 {
@@ -119,6 +120,9 @@ void kernel_main(multiboot_info_t *mboot)
     {
         PANIC("process_create_user: wrong user_esp");
     }
+
+
+
 
     kprintf("  process_create_user: PASS\n");
     kprintf("  user_eip: %x\n", test_user->user_eip);
