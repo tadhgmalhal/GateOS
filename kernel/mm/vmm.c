@@ -9,6 +9,11 @@ static page_table_t *vmm_get_or_create_table(page_dir_t *dir, uint32_t dir_index
 {
     if (dir->entries[dir_index] & PAGE_PRESENT)
     {
+        // update flags on existing entry to include PAGE_USER if needed
+        if (flags & PAGE_USER)
+        {
+            dir->entries[dir_index] |= PAGE_USER;
+        }
         return (page_table_t *)PAGE_FRAME_ADDR(dir->entries[dir_index]);
     }
 
@@ -60,10 +65,15 @@ page_dir_t *vmm_create_user_dir()
     page_dir_t *dir = (page_dir_t *)pmm_alloc_frame();
     memset(dir, 0, sizeof(page_dir_t));
 
-    uint32_t kernel_start_index = PAGE_DIR_INDEX(KERNEL_VIRTUAL_BASE);
-    for (uint32_t i = kernel_start_index; i < 1024; i++)
+    // copy ALL kernel page directory entries into the new directory
+    // this includes the identity mapped lower half (kernel code/data)
+    // and any upper half mappings
+    for (int i = 0; i < 1024; i++)
     {
-        dir->entries[i] = kernel_dir->entries[i];
+        if (kernel_dir->entries[i] & PAGE_PRESENT)
+        {
+            dir->entries[i] = kernel_dir->entries[i];
+        }
     }
 
     return dir;
@@ -71,11 +81,11 @@ page_dir_t *vmm_create_user_dir()
 
 void vmm_destroy_user_dir(page_dir_t *dir)
 {
-    uint32_t kernel_start_index = PAGE_DIR_INDEX(KERNEL_VIRTUAL_BASE);
-
-    for (uint32_t i = 0; i < kernel_start_index; i++)
+    // only free entries that aren't in the kernel directory
+    for (uint32_t i = 0; i < 1024; i++)
     {
-        if (dir->entries[i] & PAGE_PRESENT)
+        if ((dir->entries[i] & PAGE_PRESENT) &&
+            !(kernel_dir->entries[i] & PAGE_PRESENT))
         {
             pmm_free_frame(PAGE_FRAME_ADDR(dir->entries[i]));
         }

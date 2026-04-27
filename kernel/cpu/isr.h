@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-typedef struct{
+typedef struct
+{
     uint32_t ds;
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
     uint32_t int_no, err_code;
@@ -45,4 +46,4 @@ extern void isr31();
 
 void isr_handler(registers_t *regs);
 
-#endif // ISR_H
+#endif

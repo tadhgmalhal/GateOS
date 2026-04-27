@@ -2,6 +2,7 @@
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/irq.h"
+#include "cpu/syscall.h"
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
 #include "lib/kprintf.h"
@@ -11,14 +12,15 @@
 #include "mm/kheap.h"
 #include "proc/process.h"
 #include "proc/scheduler.h"
+#include "proc/userspace.h"
 #include "boot/multiboot.h"
 #include "vga.h"
-#include "proc/userspace.h"
 
 void kernel_main(multiboot_info_t *mboot)
 {
     gdt_init();
     idt_init();
+    syscall_init();
     irq_init();
     timer_init(100);
     keyboard_init();
@@ -47,53 +49,35 @@ void kernel_main(multiboot_info_t *mboot)
         PANIC("vmm_create_user_dir returned null");
     }
 
-    // verify kernel upper half is copied
-    uint32_t kernel_start = PAGE_DIR_INDEX(KERNEL_VIRTUAL_BASE);
-    int upper_half_ok = 1;
-
-    for (uint32_t i = kernel_start; i < 1024; i++)
+    int kernel_entries_ok = 1;
+    for (int i = 0; i < 1024; i++)
     {
-        if (test_dir->entries[i] != vmm_get_kernel_dir()->entries[i])
+        if (vmm_get_kernel_dir()->entries[i] & PAGE_PRESENT)
         {
-            upper_half_ok = 0;
-            break;
+            if (test_dir->entries[i] != vmm_get_kernel_dir()->entries[i])
+            {
+                kernel_entries_ok = 0;
+                break;
+            }
         }
     }
 
-    if (!upper_half_ok)
+    if (!kernel_entries_ok)
     {
-        PANIC("vmm_create_user_dir: upper half mismatch");
+        PANIC("vmm_create_user_dir: kernel entries not copied correctly");
     }
 
-    // verify lower half is empty
-    int lower_half_ok = 1;
-    for (uint32_t i = 0; i < kernel_start; i++)
-    {
-        if (test_dir->entries[i] != 0)
-        {
-            lower_half_ok = 0;
-            break;
-        }
-    }
-
-    if (!lower_half_ok)
-    {
-        PANIC("vmm_create_user_dir: lower half not zeroed");
-    }
-
-    // test destroy
     vmm_destroy_user_dir(test_dir);
-
-
-
+    kprintf("  vmm_create_user_dir: PASS\n");
+    kprintf("  vmm_destroy_user_dir: PASS\n");
+    kprintf("  Kernel entries copied: PASS\n");
 
     // process_create_user test
     kprintf("Testing process_create_user...\n");
 
-    // a tiny fake program — just some recognizable bytes
     uint8_t fake_code[16] = {
-        0x90, 0x90, 0x90, 0x90,  // NOP NOP NOP NOP
-        0xEB, 0xFE,              // JMP $ (infinite loop)
+        0x90, 0x90, 0x90, 0x90,
+        0xEB, 0xFE,
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00
@@ -121,24 +105,41 @@ void kernel_main(multiboot_info_t *mboot)
         PANIC("process_create_user: wrong user_esp");
     }
 
-
-
-
     kprintf("  process_create_user: PASS\n");
     kprintf("  user_eip: %x\n", test_user->user_eip);
     kprintf("  user_esp: %x\n", test_user->user_esp);
     kprintf("  page_dir: %x\n", test_user->page_dir);
 
-    kprintf("  vmm_create_user_dir: PASS\n");
-    kprintf("  vmm_destroy_user_dir: PASS\n");
-    kprintf("  Upper half mapping: PASS\n");
-    kprintf("  Lower half zeroed: PASS\n");
-
     process_init();
     scheduler_init();
 
-    vga_print("> ", 0, 23);
-    vga_set_cursor(2, 23);
+    kprintf("Step 1: creating user process...\n");
+
+    uint8_t user_code[] = {
+        0xEB, 0xFE
+    };
+
+    process_t *ring3_proc = process_create_user("ring3_test", 1,
+                             user_code, sizeof(user_code));
+
+    kprintf("Step 2: process created, pid=%d\n", ring3_proc->pid);
+
+    tss_set_stack(0x10, ring3_proc->kernel_stack_top);
+    kprintf("Step 3: TSS updated.\n");
+
+    vmm_switch_dir(ring3_proc->page_dir);
+    kprintf("Step 4: page dir switched.\n");
+
+    kprintf("Step 5: jumping to ring 3...\n");
+
+
+    kprintf("eip value: %x\n", ring3_proc->user_eip);
+    kprintf("esp value: %x\n", ring3_proc->user_esp);
+    kprintf("USER_CODE_BASE: %x\n", USER_CODE_BASE);
+    kprintf("USER_STACK_TOP: %x\n", USER_STACK_TOP);
+
+
+    jump_to_userspace(ring3_proc->user_eip, ring3_proc->user_esp);
 
     while (1)
     {
