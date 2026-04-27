@@ -116,7 +116,12 @@ void kernel_main(multiboot_info_t *mboot)
     kprintf("Step 1: creating user process...\n");
 
     uint8_t user_code[] = {
-        0xEB, 0xFE
+        0xB8, 0x03, 0x00, 0x00, 0x00,  // mov eax, 3 (SYS_GETPID)
+        0xCD, 0x80,                     // int 0x80
+        0xB8, 0x00, 0x00, 0x00, 0x00,  // mov eax, 0 (SYS_EXIT)
+        0xBB, 0x00, 0x00, 0x00, 0x00,  // mov ebx, 0 (exit code)
+        0xCD, 0x80,                     // int 0x80
+        0xEB, 0xFE                      // jmp $ (safety)
     };
 
     process_t *ring3_proc = process_create_user("ring3_test", 1,
@@ -125,20 +130,16 @@ void kernel_main(multiboot_info_t *mboot)
     kprintf("Step 2: process created, pid=%d\n", ring3_proc->pid);
 
     tss_set_stack(0x10, ring3_proc->kernel_stack_top);
+
+    process_set_current(ring3_proc);
+    ring3_proc->state = PROCESS_RUNNING;
+
     kprintf("Step 3: TSS updated.\n");
 
     vmm_switch_dir(ring3_proc->page_dir);
     kprintf("Step 4: page dir switched.\n");
 
     kprintf("Step 5: jumping to ring 3...\n");
-
-
-    kprintf("eip value: %x\n", ring3_proc->user_eip);
-    kprintf("esp value: %x\n", ring3_proc->user_esp);
-    kprintf("USER_CODE_BASE: %x\n", USER_CODE_BASE);
-    kprintf("USER_STACK_TOP: %x\n", USER_STACK_TOP);
-
-
     jump_to_userspace(ring3_proc->user_eip, ring3_proc->user_esp);
 
     while (1)
