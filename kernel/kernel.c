@@ -83,6 +83,48 @@ void kernel_main(multiboot_info_t *mboot)
     // test destroy
     vmm_destroy_user_dir(test_dir);
 
+
+
+
+    // process_create_user test
+    kprintf("Testing process_create_user...\n");
+
+    // a tiny fake program — just some recognizable bytes
+    uint8_t fake_code[16] = {
+        0x90, 0x90, 0x90, 0x90,  // NOP NOP NOP NOP
+        0xEB, 0xFE,              // JMP $ (infinite loop)
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00
+    };
+
+    process_t *test_user = process_create_user("test_user", 1, fake_code, sizeof(fake_code));
+
+    if (test_user == 0)
+    {
+        PANIC("process_create_user returned null");
+    }
+
+    if (test_user->page_dir == vmm_get_kernel_dir())
+    {
+        PANIC("process_create_user: process is using kernel page dir");
+    }
+
+    if (test_user->user_eip != USER_CODE_BASE)
+    {
+        PANIC("process_create_user: wrong user_eip");
+    }
+
+    if (test_user->user_esp != USER_STACK_TOP)
+    {
+        PANIC("process_create_user: wrong user_esp");
+    }
+
+    kprintf("  process_create_user: PASS\n");
+    kprintf("  user_eip: %x\n", test_user->user_eip);
+    kprintf("  user_esp: %x\n", test_user->user_esp);
+    kprintf("  page_dir: %x\n", test_user->page_dir);
+
     kprintf("  vmm_create_user_dir: PASS\n");
     kprintf("  vmm_destroy_user_dir: PASS\n");
     kprintf("  Upper half mapping: PASS\n");

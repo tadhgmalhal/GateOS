@@ -18,14 +18,16 @@ process_t *process_create(const char *name, uint32_t priority)
         PANIC("process_create: kmalloc failed");
     }
 
-    proc->pid      = next_pid++;
-    proc->state    = PROCESS_READY;
-    proc->priority = priority;
-    proc->ticks    = 0;
+    proc->pid         = next_pid++;
+    proc->state       = PROCESS_READY;
+    proc->priority    = priority;
+    proc->ticks       = 0;
     proc->sleep_until = 0;
-    proc->next     = 0;
-    proc->parent   = current_process;
-    proc->esp      = 0;
+    proc->next        = 0;
+    proc->parent      = current_process;
+    proc->esp         = 0;
+    proc->user_esp    = 0;
+    proc->user_eip    = 0;
 
     strncpy(proc->name, name, PROCESS_NAME_MAX - 1);
     proc->name[PROCESS_NAME_MAX - 1] = '\0';
@@ -57,9 +59,59 @@ process_t *process_create(const char *name, uint32_t priority)
     return proc;
 }
 
+process_t *process_create_user(const char *name, uint32_t priority, void *code, uint32_t code_size)
+{
+    process_t *proc = process_create(name, priority);
+
+    // give this process its own page directory
+    proc->page_dir = vmm_create_user_dir();
+
+    // map and copy code at USER_CODE_BASE
+    uint32_t pages_needed = (code_size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+    for (uint32_t i = 0; i < pages_needed; i++)
+    {
+        uint32_t phys = pmm_alloc_frame();
+        vmm_map(proc->page_dir, USER_CODE_BASE + i * PAGE_SIZE, phys,
+                PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER);
+
+        // temporarily map into kernel space so we can write the code
+        vmm_map(vmm_get_kernel_dir(), 0xD0000000 + i * PAGE_SIZE, phys,
+                PAGE_PRESENT | PAGE_WRITABLE);
+    }
+
+    // copy code into the temp kernel mapping
+    memcpy((void *)0xD0000000, code, code_size);
+
+    // unmap the temporary kernel mapping
+    for (uint32_t i = 0; i < pages_needed; i++)
+    {
+        vmm_unmap(vmm_get_kernel_dir(), 0xD0000000 + i * PAGE_SIZE);
+    }
+
+    // map user stack — 1MB below kernel boundary
+    for (uint32_t addr = USER_STACK_TOP - USER_STACK_SIZE;
+        addr < USER_STACK_TOP; addr += PAGE_SIZE)
+    {
+        uint32_t phys = pmm_alloc_frame();
+        vmm_map(proc->page_dir, addr, phys,
+                PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER);
+    }
+
+    proc->user_eip = USER_CODE_BASE;
+    proc->user_esp = USER_STACK_TOP;
+
+    return proc;
+}
+
 void process_destroy(process_t *proc)
 {
     proc->state = PROCESS_ZOMBIE;
+
+    if (proc->page_dir != vmm_get_kernel_dir())
+    {
+        vmm_destroy_user_dir(proc->page_dir);
+    }
 }
 
 process_t *process_get_current()
