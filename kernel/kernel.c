@@ -6,6 +6,7 @@
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
 #include "drivers/ata.h"
+#include "drivers/disk_cache.h"
 #include "lib/kprintf.h"
 #include "lib/string.h"
 #include "mm/pmm.h"
@@ -44,44 +45,41 @@ void kernel_main(multiboot_info_t *mboot)
     process_init();
     scheduler_init();
     ata_init();
+    disk_cache_init();
 
-    // ATA read/write test
+    // cache test
     uint8_t write_buf[ATA_SECTOR_SIZE];
     uint8_t read_buf[ATA_SECTOR_SIZE];
 
     memset(write_buf, 0xAB, ATA_SECTOR_SIZE);
 
-    ata_result_t wr = ata_write_sectors(1, 1, write_buf);
-    if (wr == ATA_OK)
-    {
-        kprintf("ATA write: OK\n");
-    }
-    else
-    {
-        kprintf("ATA write: FAILED (%d)\n", wr);
-    }
+    disk_cache_write(1, write_buf);
+    kprintf("Cache write: OK\n");
 
     memset(read_buf, 0, ATA_SECTOR_SIZE);
-    ata_result_t rd = ata_read_sectors(1, 1, read_buf);
-    if (rd == ATA_OK)
-    {
-        kprintf("ATA read: OK\n");
-    }
-    else
-    {
-        kprintf("ATA read: FAILED (%d)\n", rd);
-    }
+    disk_cache_read(1, read_buf);
 
     int match = 1;
     for (int i = 0; i < ATA_SECTOR_SIZE; i++)
     {
-        if (read_buf[i] != 0xAB)
-        {
-            match = 0;
-            break;
-        }
+        if (read_buf[i] != 0xAB) { match = 0; break; }
     }
-    kprintf("ATA data verify: %s\n", match ? "OK" : "FAILED");
+    kprintf("Cache read (hit): %s\n", match ? "OK" : "FAILED");
+
+    disk_cache_flush();
+    kprintf("Cache flush: OK\n");
+
+    memset(read_buf, 0, ATA_SECTOR_SIZE);
+    disk_cache_read(1, read_buf);
+    match = 1;
+    for (int i = 0; i < ATA_SECTOR_SIZE; i++)
+    {
+        if (read_buf[i] != 0xAB) { match = 0; break; }
+    }
+    kprintf("Cache read (hit 2): %s\n", match ? "OK" : "FAILED");
+
+    kprintf("Cache hits:   %u\n", disk_cache_get_hits());
+    kprintf("Cache misses: %u\n", disk_cache_get_misses());
 
     kprintf("GateOS ready.\n");
 

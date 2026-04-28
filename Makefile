@@ -38,6 +38,8 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/drivers/ata.c -o kernel/drivers/ata.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/drivers/disk_cache.c -o kernel/drivers/disk_cache.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/lib/kprintf.c -o kernel/lib/kprintf.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/lib/string.c -o kernel/lib/string.o
@@ -69,6 +71,7 @@ _build:
 		kernel/drivers/timer.o \
 		kernel/drivers/keyboard.o \
 		kernel/drivers/ata.o \
+		kernel/drivers/disk_cache.o \
 		kernel/lib/kprintf.o \
 		kernel/lib/string.o \
 		kernel/mm/pmm.o \
