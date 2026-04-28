@@ -9,6 +9,11 @@ static page_table_t *vmm_get_or_create_table(page_dir_t *dir, uint32_t dir_index
 {
     if (dir->entries[dir_index] & PAGE_PRESENT)
     {
+        // update flags on existing entry to include PAGE_USER if needed
+        if (flags & PAGE_USER)
+        {
+            dir->entries[dir_index] |= PAGE_USER;
+        }
         return (page_table_t *)PAGE_FRAME_ADDR(dir->entries[dir_index]);
     }
 
@@ -55,13 +60,45 @@ page_dir_t *vmm_get_kernel_dir()
     return kernel_dir;
 }
 
+page_dir_t *vmm_create_user_dir()
+{
+    page_dir_t *dir = (page_dir_t *)pmm_alloc_frame();
+    memset(dir, 0, sizeof(page_dir_t));
+
+    // copy ALL kernel page directory entries into the new directory
+    // this includes the identity mapped lower half (kernel code/data)
+    // and any upper half mappings
+    for (int i = 0; i < 1024; i++)
+    {
+        if (kernel_dir->entries[i] & PAGE_PRESENT)
+        {
+            dir->entries[i] = kernel_dir->entries[i];
+        }
+    }
+
+    return dir;
+}
+
+void vmm_destroy_user_dir(page_dir_t *dir)
+{
+    // only free entries that aren't in the kernel directory
+    for (uint32_t i = 0; i < 1024; i++)
+    {
+        if ((dir->entries[i] & PAGE_PRESENT) &&
+            !(kernel_dir->entries[i] & PAGE_PRESENT))
+        {
+            pmm_free_frame(PAGE_FRAME_ADDR(dir->entries[i]));
+        }
+    }
+
+    pmm_free_frame((uint32_t)dir);
+}
+
 void vmm_init()
 {
     kernel_dir = (page_dir_t *)pmm_alloc_frame();
     memset(kernel_dir, 0, sizeof(page_dir_t));
 
-    // identity map the first 8MB
-    // this covers the kernel code, stack, and PMM bitmap
     for (uint32_t addr = 0; addr < 0x800000; addr += PAGE_SIZE)
     {
         vmm_map(kernel_dir, addr, addr, PAGE_PRESENT | PAGE_WRITABLE);
@@ -69,7 +106,6 @@ void vmm_init()
 
     vmm_switch_dir(kernel_dir);
 
-    // enable paging by setting bit 31 of CR0
     uint32_t cr0;
     __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
     cr0 |= 0x80000000;

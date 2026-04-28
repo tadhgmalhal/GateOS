@@ -2,6 +2,7 @@
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/irq.h"
+#include "cpu/syscall.h"
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
 #include "lib/kprintf.h"
@@ -11,6 +12,8 @@
 #include "mm/kheap.h"
 #include "proc/process.h"
 #include "proc/scheduler.h"
+#include "proc/userspace.h"
+#include "elf/elf.h"
 #include "boot/multiboot.h"
 #include "vga.h"
 
@@ -18,6 +21,7 @@ void kernel_main(multiboot_info_t *mboot)
 {
     gdt_init();
     idt_init();
+    syscall_init();
     irq_init();
     timer_init(100);
     keyboard_init();
@@ -29,6 +33,7 @@ void kernel_main(multiboot_info_t *mboot)
     kprintf("GDT initialized.\n");
     kprintf("IDT initialized.\n");
     kprintf("IRQs enabled.\n");
+    kprintf("Syscalls active.\n");
     kprintf("Timer running at %d Hz.\n", 100);
     kprintf("Keyboard active.\n");
 
@@ -38,8 +43,7 @@ void kernel_main(multiboot_info_t *mboot)
     process_init();
     scheduler_init();
 
-    vga_print("> ", 0, 23);
-    vga_set_cursor(2, 23);
+    kprintf("GateOS ready.\n");
 
     while (1)
     {

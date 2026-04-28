@@ -14,7 +14,9 @@ _build:
 	nasm -f elf32 kernel/cpu/gdt.asm -o kernel/cpu/gdt_asm.o
 	nasm -f elf32 kernel/cpu/idt.asm -o kernel/cpu/idt_asm.o
 	nasm -f elf32 kernel/cpu/irq.asm -o kernel/cpu/irq_asm.o
+	nasm -f elf32 kernel/cpu/syscall.asm -o kernel/cpu/syscall_asm.o
 	nasm -f elf32 kernel/proc/context_switch.asm -o kernel/proc/context_switch.o
+	nasm -f elf32 kernel/proc/userspace.asm -o kernel/proc/userspace_asm.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/kernel.c -o kernel/kernel.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
@@ -27,6 +29,8 @@ _build:
 		-Ikernel -c kernel/cpu/pic.c -o kernel/cpu/pic.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/cpu/irq.c -o kernel/cpu/irq.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/cpu/syscall.c -o kernel/cpu/syscall.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/drivers/timer.c -o kernel/drivers/timer.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
@@ -46,6 +50,10 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/proc/scheduler.c -o kernel/proc/scheduler.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/proc/userspace.c -o kernel/proc/userspace.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/elf/elf.c -o kernel/elf/elf.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
 	i686-elf-gcc -T linker.ld -o gateos.bin \
 		-ffreestanding -O2 -nostdlib \
@@ -55,6 +63,7 @@ _build:
 		kernel/cpu/isr.o \
 		kernel/cpu/pic.o \
 		kernel/cpu/irq_asm.o kernel/cpu/irq.o \
+		kernel/cpu/syscall_asm.o kernel/cpu/syscall.o \
 		kernel/drivers/timer.o \
 		kernel/drivers/keyboard.o \
 		kernel/lib/kprintf.o \
@@ -65,6 +74,9 @@ _build:
 		kernel/proc/process.o \
 		kernel/proc/context_switch.o \
 		kernel/proc/scheduler.o \
+		kernel/proc/userspace.o \
+		kernel/proc/userspace_asm.o \
+		kernel/elf/elf.o \
 		kernel/vga.o \
 		kernel/kernel.o \
 		-lgcc
