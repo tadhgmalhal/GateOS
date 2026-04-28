@@ -56,6 +56,10 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/proc/userspace.c -o kernel/proc/userspace.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/fs/vfs.c -o kernel/fs/vfs.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/fs/devfs.c -o kernel/fs/devfs.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/elf/elf.c -o kernel/elf/elf.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
@@ -82,6 +86,8 @@ _build:
 		kernel/proc/scheduler.o \
 		kernel/proc/userspace.o \
 		kernel/proc/userspace_asm.o \
+		kernel/fs/vfs.o \
+		kernel/fs/devfs.o \
 		kernel/elf/elf.o \
 		kernel/vga.o \
 		kernel/kernel.o \

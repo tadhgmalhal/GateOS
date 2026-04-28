@@ -15,6 +15,8 @@
 #include "proc/process.h"
 #include "proc/scheduler.h"
 #include "proc/userspace.h"
+#include "fs/vfs.h"
+#include "fs/devfs.h"
 #include "elf/elf.h"
 #include "boot/multiboot.h"
 #include "vga.h"
@@ -46,42 +48,97 @@ void kernel_main(multiboot_info_t *mboot)
     scheduler_init();
     ata_init();
     disk_cache_init();
+    vfs_init();
+    devfs_init();
 
-    // cache test
-    uint8_t write_buf[ATA_SECTOR_SIZE];
-    uint8_t read_buf[ATA_SECTOR_SIZE];
+    // register /dev/keyboard
+    devfs_register("keyboard", keyboard_get_device());
 
-    memset(write_buf, 0xAB, ATA_SECTOR_SIZE);
+    // mount devfs at /dev
+    vfs_mount("/dev", devfs_get_root());
 
-    disk_cache_write(1, write_buf);
-    kprintf("Cache write: OK\n");
+    // test VFS
+    kprintf("Testing VFS...\n");
 
-    memset(read_buf, 0, ATA_SECTOR_SIZE);
-    disk_cache_read(1, read_buf);
-
-    int match = 1;
-    for (int i = 0; i < ATA_SECTOR_SIZE; i++)
+    // test /dev/null
+    vfs_node_t *null_node = vfs_open("/dev/null");
+    if (null_node)
     {
-        if (read_buf[i] != 0xAB) { match = 0; break; }
+        uint8_t buf[16];
+        memset(buf, 0xAA, 16);
+        uint32_t written = vfs_write(null_node, 0, 16, buf);
+        uint32_t read    = vfs_read(null_node, 0, 16, buf);
+        if (written == 16 && read == 0)
+        {
+            kprintf("  /dev/null: PASS\n");
+        }
+        else
+        {
+            kprintf("  /dev/null: FAIL\n");
+        }
+        vfs_close(null_node);
     }
-    kprintf("Cache read (hit): %s\n", match ? "OK" : "FAILED");
-
-    disk_cache_flush();
-    kprintf("Cache flush: OK\n");
-
-    memset(read_buf, 0, ATA_SECTOR_SIZE);
-    disk_cache_read(1, read_buf);
-    match = 1;
-    for (int i = 0; i < ATA_SECTOR_SIZE; i++)
+    else
     {
-        if (read_buf[i] != 0xAB) { match = 0; break; }
+        kprintf("  /dev/null: FAIL (open returned null)\n");
     }
-    kprintf("Cache read (hit 2): %s\n", match ? "OK" : "FAILED");
 
-    kprintf("Cache hits:   %u\n", disk_cache_get_hits());
-    kprintf("Cache misses: %u\n", disk_cache_get_misses());
+    // test /dev/zero
+    vfs_node_t *zero_node = vfs_open("/dev/zero");
+    if (zero_node)
+    {
+        uint8_t buf[16];
+        memset(buf, 0xAA, 16);
+        uint32_t read = vfs_read(zero_node, 0, 16, buf);
+        int zeroed = 1;
+        for (int i = 0; i < 16; i++)
+        {
+            if (buf[i] != 0) { zeroed = 0; break; }
+        }
+        if (read == 16 && zeroed)
+        {
+            kprintf("  /dev/zero: PASS\n");
+        }
+        else
+        {
+            kprintf("  /dev/zero: FAIL\n");
+        }
+        vfs_close(zero_node);
+    }
+    else
+    {
+        kprintf("  /dev/zero: FAIL (open returned null)\n");
+    }
+
+    // test /dev/keyboard exists
+    vfs_node_t *kb_node = vfs_open("/dev/keyboard");
+    if (kb_node)
+    {
+        kprintf("  /dev/keyboard: PASS\n");
+        vfs_close(kb_node);
+    }
+    else
+    {
+        kprintf("  /dev/keyboard: FAIL\n");
+    }
+
+    // test readdir on /dev
+    vfs_node_t *dev_node = vfs_open("/dev");
+    if (dev_node)
+    {
+        kprintf("  /dev contents:\n");
+        vfs_dirent_t *dirent;
+        uint32_t i = 0;
+        while ((dirent = vfs_readdir(dev_node, i)) != 0)
+        {
+            kprintf("    [%d] %s\n", i, dirent->name);
+            i++;
+        }
+    }
 
     kprintf("GateOS ready.\n");
+    vga_print("> ", 0, 23);
+    vga_set_cursor(2, 23);
 
     while (1)
     {
