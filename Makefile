@@ -52,6 +52,8 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/proc/userspace.c -o kernel/proc/userspace.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/elf/elf.c -o kernel/elf/elf.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
 	i686-elf-gcc -T linker.ld -o gateos.bin \
 		-ffreestanding -O2 -nostdlib \
@@ -74,6 +76,7 @@ _build:
 		kernel/proc/scheduler.o \
 		kernel/proc/userspace.o \
 		kernel/proc/userspace_asm.o \
+		kernel/elf/elf.o \
 		kernel/vga.o \
 		kernel/kernel.o \
 		-lgcc

@@ -13,6 +13,7 @@
 #include "proc/process.h"
 #include "proc/scheduler.h"
 #include "proc/userspace.h"
+#include "elf/elf.h"
 #include "boot/multiboot.h"
 #include "vga.h"
 
@@ -113,34 +114,76 @@ void kernel_main(multiboot_info_t *mboot)
     process_init();
     scheduler_init();
 
-    kprintf("Step 1: creating user process...\n");
+    // ELF loader test
+    static uint8_t test_elf[] = {
+        // ELF header
+        0x7F, 0x45, 0x4C, 0x46,  // magic
+        0x01,                     // 32-bit
+        0x01,                     // little endian
+        0x01,                     // ELF version
+        0x00,                     // System V ABI
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,  // padding
+        0x02, 0x00,               // ET_EXEC
+        0x03, 0x00,               // EM_386
+        0x01, 0x00, 0x00, 0x00,  // version
+        0x00, 0x00, 0x40, 0x00,  // entry point 0x400000
+        0x34, 0x00, 0x00, 0x00,  // phoff = 52
+        0x00, 0x00, 0x00, 0x00,  // shoff = 0
+        0x00, 0x00, 0x00, 0x00,  // flags
+        0x34, 0x00,               // ehsize = 52
+        0x20, 0x00,               // phentsize = 32
+        0x01, 0x00,               // phnum = 1
+        0x28, 0x00,               // shentsize = 40
+        0x00, 0x00,               // shnum = 0
+        0x00, 0x00,               // shstrndx = 0
 
-    uint8_t user_code[] = {
-        0xB8, 0x03, 0x00, 0x00, 0x00,  // mov eax, 3 (SYS_GETPID)
-        0xCD, 0x80,                     // int 0x80
+        // Program header
+        0x01, 0x00, 0x00, 0x00,  // PT_LOAD
+        0x54, 0x00, 0x00, 0x00,  // offset = 84
+        0x00, 0x00, 0x40, 0x00,  // vaddr = 0x400000
+        0x00, 0x00, 0x40, 0x00,  // paddr = 0x400000
+        0x0E, 0x00, 0x00, 0x00,  // filesz = 14
+        0x0E, 0x00, 0x00, 0x00,  // memsz = 14
+        0x05, 0x00, 0x00, 0x00,  // flags = PF_R | PF_X
+        0x00, 0x10, 0x00, 0x00,  // align = 0x1000
+
+        // Code
         0xB8, 0x00, 0x00, 0x00, 0x00,  // mov eax, 0 (SYS_EXIT)
         0xBB, 0x00, 0x00, 0x00, 0x00,  // mov ebx, 0 (exit code)
         0xCD, 0x80,                     // int 0x80
-        0xEB, 0xFE                      // jmp $ (safety)
+        0xEB, 0xFE                      // jmp $
     };
 
-    process_t *ring3_proc = process_create_user("ring3_test", 1,
-                             user_code, sizeof(user_code));
+    kprintf("Testing ELF loader...\n");
 
-    kprintf("Step 2: process created, pid=%d\n", ring3_proc->pid);
+    process_t *elf_proc = (process_t *)kmalloc(sizeof(process_t));
+    memset(elf_proc, 0, sizeof(process_t));
+    elf_proc->pid      = 99;
+    elf_proc->page_dir = vmm_create_user_dir();
+    elf_proc->state    = PROCESS_RUNNING;
 
-    tss_set_stack(0x10, ring3_proc->kernel_stack_top);
+    elf_result_t result = elf_load(test_elf, sizeof(test_elf), elf_proc);
 
-    process_set_current(ring3_proc);
-    ring3_proc->state = PROCESS_RUNNING;
+    if (result != ELF_OK)
+    {
+        kprintf("ELF load failed: %d\n", result);
+        PANIC("ELF loader test failed");
+    }
 
-    kprintf("Step 3: TSS updated.\n");
+    kprintf("  ELF loader: PASS\n");
+    kprintf("  entry: %x\n", elf_proc->user_eip);
+    kprintf("  stack: %x\n", elf_proc->user_esp);
 
-    vmm_switch_dir(ring3_proc->page_dir);
-    kprintf("Step 4: page dir switched.\n");
+    uint8_t *stack = (uint8_t *)kmalloc(KERNEL_STACK_SIZE);
+    elf_proc->kernel_stack     = (uint32_t)stack;
+    elf_proc->kernel_stack_top = (uint32_t)(stack + KERNEL_STACK_SIZE);
 
-    kprintf("Step 5: jumping to ring 3...\n");
-    jump_to_userspace(ring3_proc->user_eip, ring3_proc->user_esp);
+    process_set_current(elf_proc);
+    tss_set_stack(0x10, elf_proc->kernel_stack_top);
+    vmm_switch_dir(elf_proc->page_dir);
+
+    jump_to_userspace(elf_proc->user_eip, elf_proc->user_esp);
 
     while (1)
     {
