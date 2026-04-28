@@ -17,6 +17,7 @@
 #include "proc/userspace.h"
 #include "fs/vfs.h"
 #include "fs/devfs.h"
+#include "fs/tmpfs.h"
 #include "elf/elf.h"
 #include "boot/multiboot.h"
 #include "vga.h"
@@ -50,86 +51,86 @@ void kernel_main(multiboot_info_t *mboot)
     disk_cache_init();
     vfs_init();
     devfs_init();
+    tmpfs_init();
 
-    // register /dev/keyboard
+    // register devices
     devfs_register("keyboard", keyboard_get_device());
 
-    // mount devfs at /dev
+    // mount filesystems
     vfs_mount("/dev", devfs_get_root());
+    vfs_mount("/tmp", tmpfs_get_root());
 
-    // test VFS
-    kprintf("Testing VFS...\n");
+    // tmpfs test
+    kprintf("Testing tmpfs...\n");
 
-    // test /dev/null
-    vfs_node_t *null_node = vfs_open("/dev/null");
-    if (null_node)
+    vfs_node_t *tmp = vfs_open("/tmp");
+    if (!tmp)
     {
-        uint8_t buf[16];
-        memset(buf, 0xAA, 16);
-        uint32_t written = vfs_write(null_node, 0, 16, buf);
-        uint32_t read    = vfs_read(null_node, 0, 16, buf);
-        if (written == 16 && read == 0)
+        kprintf("  /tmp open: FAIL\n");
+    }
+    else
+    {
+        kprintf("  /tmp open: PASS\n");
+
+        // create a file in /tmp
+        vfs_node_t *file = tmpfs_create_file(tmp, "test.txt");
+        if (!file)
         {
-            kprintf("  /dev/null: PASS\n");
+            kprintf("  create file: FAIL\n");
         }
         else
         {
-            kprintf("  /dev/null: FAIL\n");
-        }
-        vfs_close(null_node);
-    }
-    else
-    {
-        kprintf("  /dev/null: FAIL (open returned null)\n");
-    }
+            kprintf("  create file: PASS\n");
 
-    // test /dev/zero
-    vfs_node_t *zero_node = vfs_open("/dev/zero");
-    if (zero_node)
-    {
-        uint8_t buf[16];
-        memset(buf, 0xAA, 16);
-        uint32_t read = vfs_read(zero_node, 0, 16, buf);
-        int zeroed = 1;
-        for (int i = 0; i < 16; i++)
-        {
-            if (buf[i] != 0) { zeroed = 0; break; }
+            // write to it
+            const uint8_t *msg = (const uint8_t *)"Hello from tmpfs!";
+            uint32_t written = vfs_write(file, 0, 17, msg);
+            kprintf("  write %d bytes: %s\n", written, written == 17 ? "PASS" : "FAIL");
+
+            // read it back
+            uint8_t buf[32];
+            memset(buf, 0, 32);
+            uint32_t read = vfs_read(file, 0, 17, buf);
+            kprintf("  read %d bytes: %s\n", read, read == 17 ? "PASS" : "FAIL");
+            kprintf("  content: %s\n", (char *)buf);
+
+            // open via VFS path
+            vfs_node_t *found = vfs_finddir(tmp, "test.txt");
+            if (found)
+            {
+                kprintf("  finddir: PASS\n");
+            }
+            else
+            {
+                kprintf("  finddir: FAIL\n");
+            }
         }
-        if (read == 16 && zeroed)
+
+        // create a subdirectory
+        vfs_node_t *subdir = tmpfs_create_dir(tmp, "subdir");
+        if (subdir)
         {
-            kprintf("  /dev/zero: PASS\n");
+            kprintf("  create dir: PASS\n");
+            vfs_node_t *subfile = tmpfs_create_file(subdir, "nested.txt");
+            if (subfile)
+            {
+                kprintf("  nested file: PASS\n");
+            }
+            else
+            {
+                kprintf("  nested file: FAIL\n");
+            }
         }
         else
         {
-            kprintf("  /dev/zero: FAIL\n");
+            kprintf("  create dir: FAIL\n");
         }
-        vfs_close(zero_node);
-    }
-    else
-    {
-        kprintf("  /dev/zero: FAIL (open returned null)\n");
-    }
 
-    // test /dev/keyboard exists
-    vfs_node_t *kb_node = vfs_open("/dev/keyboard");
-    if (kb_node)
-    {
-        kprintf("  /dev/keyboard: PASS\n");
-        vfs_close(kb_node);
-    }
-    else
-    {
-        kprintf("  /dev/keyboard: FAIL\n");
-    }
-
-    // test readdir on /dev
-    vfs_node_t *dev_node = vfs_open("/dev");
-    if (dev_node)
-    {
-        kprintf("  /dev contents:\n");
+        // readdir
+        kprintf("  /tmp contents:\n");
         vfs_dirent_t *dirent;
         uint32_t i = 0;
-        while ((dirent = vfs_readdir(dev_node, i)) != 0)
+        while ((dirent = vfs_readdir(tmp, i)) != 0)
         {
             kprintf("    [%d] %s\n", i, dirent->name);
             i++;
