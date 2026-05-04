@@ -36,6 +36,10 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/drivers/keyboard.c -o kernel/drivers/keyboard.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/drivers/ata.c -o kernel/drivers/ata.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/drivers/disk_cache.c -o kernel/drivers/disk_cache.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/lib/kprintf.c -o kernel/lib/kprintf.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/lib/string.c -o kernel/lib/string.o
@@ -52,6 +56,14 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/proc/userspace.c -o kernel/proc/userspace.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/fs/vfs.c -o kernel/fs/vfs.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/fs/devfs.c -o kernel/fs/devfs.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/fs/tmpfs.c -o kernel/fs/tmpfs.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/fs/ext2.c -o kernel/fs/ext2.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/elf/elf.c -o kernel/elf/elf.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
@@ -66,6 +78,8 @@ _build:
 		kernel/cpu/syscall_asm.o kernel/cpu/syscall.o \
 		kernel/drivers/timer.o \
 		kernel/drivers/keyboard.o \
+		kernel/drivers/ata.o \
+		kernel/drivers/disk_cache.o \
 		kernel/lib/kprintf.o \
 		kernel/lib/string.o \
 		kernel/mm/pmm.o \
@@ -76,6 +90,10 @@ _build:
 		kernel/proc/scheduler.o \
 		kernel/proc/userspace.o \
 		kernel/proc/userspace_asm.o \
+		kernel/fs/vfs.o \
+		kernel/fs/devfs.o \
+		kernel/fs/tmpfs.o \
+		kernel/fs/ext2.o \
 		kernel/elf/elf.o \
 		kernel/vga.o \
 		kernel/kernel.o \
@@ -86,7 +104,7 @@ _build:
 	grub-mkrescue -o gateos.iso iso/
 
 run:
-	qemu-system-i386 -cdrom gateos.iso
+	qemu-system-i386 -cdrom gateos.iso -hda disk.img
 
 clean:
 	rm -f boot/boot.o kernel/kernel.o gateos.bin gateos.iso

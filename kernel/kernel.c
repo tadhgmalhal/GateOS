@@ -5,6 +5,8 @@
 #include "cpu/syscall.h"
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
+#include "drivers/ata.h"
+#include "drivers/disk_cache.h"
 #include "lib/kprintf.h"
 #include "lib/string.h"
 #include "mm/pmm.h"
@@ -13,6 +15,10 @@
 #include "proc/process.h"
 #include "proc/scheduler.h"
 #include "proc/userspace.h"
+#include "fs/vfs.h"
+#include "fs/devfs.h"
+#include "fs/tmpfs.h"
+#include "fs/ext2.h"
 #include "elf/elf.h"
 #include "boot/multiboot.h"
 #include "vga.h"
@@ -42,8 +48,61 @@ void kernel_main(multiboot_info_t *mboot)
     heap_init();
     process_init();
     scheduler_init();
+    ata_init();
+    disk_cache_init();
+    vfs_init();
+    devfs_init();
+    tmpfs_init();
+
+    devfs_register("keyboard", keyboard_get_device());
+    vfs_mount("/dev", devfs_get_root());
+    vfs_mount("/tmp", tmpfs_get_root());
+
+    kprintf("Mounting ext2...\n");
+    vfs_node_t *ext2_root = ext2_init();
+    if (ext2_root)
+    {
+        vfs_mount("/", ext2_root);
+
+        kprintf("Root directory contents:\n");
+        vfs_dirent_t *dirent;
+        uint32_t i = 0;
+        while ((dirent = vfs_readdir(ext2_root, i)) != 0)
+        {
+            kprintf("  [%d] %s\n", i, dirent->name);
+            i++;
+        }
+
+        vfs_node_t *motd = vfs_open("/etc/motd");
+        if (motd)
+        {
+            uint8_t buf[64];
+            memset(buf, 0, 64);
+            uint32_t bytes = vfs_read(motd, 0, 63, buf);
+            kprintf("/etc/motd (%d bytes): %s", bytes, (char *)buf);
+            vfs_close(motd);
+        }
+        else
+        {
+            kprintf("/etc/motd: not found\n");
+        }
+    }
+    else
+    {
+        kprintf("ext2: mount failed\n");
+    }
 
     kprintf("GateOS ready.\n");
+
+    int prompt_row = kprintf_get_row();
+    if (prompt_row >= 24)
+    {
+        prompt_row = 24;
+    }
+
+    vga_print("> ", 0, prompt_row);
+    vga_set_cursor(2, prompt_row);
+    keyboard_set_cursor(2, prompt_row);
 
     while (1)
     {

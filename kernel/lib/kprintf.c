@@ -141,3 +141,8 @@ void kpanic(const char *file, int line, const char *msg)
         __asm__ volatile("hlt");
     }
 }
+
+int kprintf_get_row()
+{
+    return cursor_row;
+}
