@@ -62,6 +62,8 @@ _build:
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/fs/tmpfs.c -o kernel/fs/tmpfs.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		-Ikernel -c kernel/fs/ext2.c -o kernel/fs/ext2.o
+	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/elf/elf.c -o kernel/elf/elf.o
 	i686-elf-gcc -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		-Ikernel -c kernel/vga.c -o kernel/vga.o
@@ -91,6 +93,7 @@ _build:
 		kernel/fs/vfs.o \
 		kernel/fs/devfs.o \
 		kernel/fs/tmpfs.o \
+		kernel/fs/ext2.o \
 		kernel/elf/elf.o \
 		kernel/vga.o \
 		kernel/kernel.o \

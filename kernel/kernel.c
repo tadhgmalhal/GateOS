@@ -18,6 +18,7 @@
 #include "fs/vfs.h"
 #include "fs/devfs.h"
 #include "fs/tmpfs.h"
+#include "fs/ext2.h"
 #include "elf/elf.h"
 #include "boot/multiboot.h"
 #include "vga.h"
@@ -53,88 +54,31 @@ void kernel_main(multiboot_info_t *mboot)
     devfs_init();
     tmpfs_init();
 
-    // register devices
+    // register devices and mount filesystems
     devfs_register("keyboard", keyboard_get_device());
-
-    // mount filesystems
     vfs_mount("/dev", devfs_get_root());
     vfs_mount("/tmp", tmpfs_get_root());
 
-    // tmpfs test
-    kprintf("Testing tmpfs...\n");
-
-    vfs_node_t *tmp = vfs_open("/tmp");
-    if (!tmp)
+    // mount ext2 at root
+    kprintf("Mounting ext2...\n");
+    vfs_node_t *ext2_root = ext2_init();
+    if (ext2_root)
     {
-        kprintf("  /tmp open: FAIL\n");
+        vfs_mount("/", ext2_root);
+
+        // test ext2 — list root directory
+        kprintf("Root directory contents:\n");
+        vfs_dirent_t *dirent;
+        uint32_t i = 0;
+        while ((dirent = vfs_readdir(ext2_root, i)) != 0)
+        {
+            kprintf("  [%d] %s\n", i, dirent->name);
+            i++;
+        }
     }
     else
     {
-        kprintf("  /tmp open: PASS\n");
-
-        // create a file in /tmp
-        vfs_node_t *file = tmpfs_create_file(tmp, "test.txt");
-        if (!file)
-        {
-            kprintf("  create file: FAIL\n");
-        }
-        else
-        {
-            kprintf("  create file: PASS\n");
-
-            // write to it
-            const uint8_t *msg = (const uint8_t *)"Hello from tmpfs!";
-            uint32_t written = vfs_write(file, 0, 17, msg);
-            kprintf("  write %d bytes: %s\n", written, written == 17 ? "PASS" : "FAIL");
-
-            // read it back
-            uint8_t buf[32];
-            memset(buf, 0, 32);
-            uint32_t read = vfs_read(file, 0, 17, buf);
-            kprintf("  read %d bytes: %s\n", read, read == 17 ? "PASS" : "FAIL");
-            kprintf("  content: %s\n", (char *)buf);
-
-            // open via VFS path
-            vfs_node_t *found = vfs_finddir(tmp, "test.txt");
-            if (found)
-            {
-                kprintf("  finddir: PASS\n");
-            }
-            else
-            {
-                kprintf("  finddir: FAIL\n");
-            }
-        }
-
-        // create a subdirectory
-        vfs_node_t *subdir = tmpfs_create_dir(tmp, "subdir");
-        if (subdir)
-        {
-            kprintf("  create dir: PASS\n");
-            vfs_node_t *subfile = tmpfs_create_file(subdir, "nested.txt");
-            if (subfile)
-            {
-                kprintf("  nested file: PASS\n");
-            }
-            else
-            {
-                kprintf("  nested file: FAIL\n");
-            }
-        }
-        else
-        {
-            kprintf("  create dir: FAIL\n");
-        }
-
-        // readdir
-        kprintf("  /tmp contents:\n");
-        vfs_dirent_t *dirent;
-        uint32_t i = 0;
-        while ((dirent = vfs_readdir(tmp, i)) != 0)
-        {
-            kprintf("    [%d] %s\n", i, dirent->name);
-            i++;
-        }
+        kprintf("ext2: mount failed\n");
     }
 
     kprintf("GateOS ready.\n");
