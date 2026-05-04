@@ -154,3 +154,9 @@ void keyboard_init()
 
     irq_register(1, keyboard_callback);
 }
+
+void keyboard_set_cursor(int col, int row)
+{
+    cursor_col = col;
+    cursor_row = row;
+}

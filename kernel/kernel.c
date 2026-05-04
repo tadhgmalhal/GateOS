@@ -54,19 +54,16 @@ void kernel_main(multiboot_info_t *mboot)
     devfs_init();
     tmpfs_init();
 
-    // register devices and mount filesystems
     devfs_register("keyboard", keyboard_get_device());
     vfs_mount("/dev", devfs_get_root());
     vfs_mount("/tmp", tmpfs_get_root());
 
-    // mount ext2 at root
     kprintf("Mounting ext2...\n");
     vfs_node_t *ext2_root = ext2_init();
     if (ext2_root)
     {
         vfs_mount("/", ext2_root);
 
-        // test ext2 — list root directory
         kprintf("Root directory contents:\n");
         vfs_dirent_t *dirent;
         uint32_t i = 0;
@@ -75,6 +72,20 @@ void kernel_main(multiboot_info_t *mboot)
             kprintf("  [%d] %s\n", i, dirent->name);
             i++;
         }
+
+        vfs_node_t *motd = vfs_open("/etc/motd");
+        if (motd)
+        {
+            uint8_t buf[64];
+            memset(buf, 0, 64);
+            uint32_t bytes = vfs_read(motd, 0, 63, buf);
+            kprintf("/etc/motd (%d bytes): %s", bytes, (char *)buf);
+            vfs_close(motd);
+        }
+        else
+        {
+            kprintf("/etc/motd: not found\n");
+        }
     }
     else
     {
@@ -82,8 +93,16 @@ void kernel_main(multiboot_info_t *mboot)
     }
 
     kprintf("GateOS ready.\n");
-    vga_print("> ", 0, 23);
-    vga_set_cursor(2, 23);
+
+    int prompt_row = kprintf_get_row();
+    if (prompt_row >= 24)
+    {
+        prompt_row = 24;
+    }
+
+    vga_print("> ", 0, prompt_row);
+    vga_set_cursor(2, prompt_row);
+    keyboard_set_cursor(2, prompt_row);
 
     while (1)
     {
